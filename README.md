@@ -4,11 +4,11 @@
 
 **Are LVLMs more likely to hallucinate an absent object when that object frequently co-occurs with the objects present in the image?**
 
-To test this, we perform a targeted adversarial attack on a target object (A) that is not present in the image, and measure the minimum perturbation budget (\epsilon^*) required to flip the model response from `No → Yes`.
+To test this, we perform a targeted adversarial attack on a target object $A$ that is not present in the image, and measure the minimum perturbation budget $\epsilon^*$ required to flip the model response from `No → Yes`.
 
 The main hypothesis is:
 
-> **If the target object (A) has higher co-occurrence with the objects present in the image, hallucination will occur at a smaller (\epsilon^*).**
+> **If the target object $A$ has higher co-occurrence with the objects present in the image, hallucination will occur at a smaller $\epsilon^*$.**
 
 All experiments use LLaVA-1.5-7B and COCO 2017.
 
@@ -18,7 +18,7 @@ All experiments use LLaVA-1.5-7B and COCO 2017.
 
 We first compute object co-occurrence statistics across all 80 COCO object categories using COCO train2017.
 
-Since a simple conditional probability (P(B|A)) is strongly affected by the marginal frequency of common categories such as `person`, **PMI is used as the main co-occurrence score.**
+Since a simple conditional probability $P(B|A)$ is strongly affected by the marginal frequency of common categories such as `person`, **PMI is used as the main co-occurrence score.**
 
 * Dataset: COCO train2017, 118,287 images
 * Main metric: PMI
@@ -37,21 +37,20 @@ This confirms that COCO contains a clear object co-occurrence structure.
 
 ## Stage 2. High/Low Co-occurrence Group Construction
 
-For each val2017 image, we define a target object (A) that is **not present in the image**.
+For each val2017 image, we define a target object $A$ that is **not present in the image**.
 
-The co-occurrence score between the target (A) and the set of objects present in the image (Y) is defined as:
+The co-occurrence score between the target $A$ and the set of objects present in the image $Y$ is defined as:
 
-[
+$$
 S(A,Y)
 ======
 
-\mathrm{mean}
-{
+\mathrm{mean}\left{
 PMI(A,y)
 :
-y\in Y
-}
-]
+y \in Y
+\right}
+$$
 
 Candidates are divided into:
 
@@ -75,13 +74,13 @@ The standardized mean difference (SMD) before and after matching is shown below.
 | avg. area          | −0.209 | −0.026 |
 | CLIP similarity    | +0.290 | +0.005 |
 
-A total of **77,828 high/low pairs** are successfully matched, and all three covariates satisfy (|SMD| < 0.04) after matching.
+A total of **77,828 high/low pairs** are successfully matched, and all three covariates satisfy $|SMD| < 0.04$ after matching.
 
 This allows the subsequent comparison to control for simple frequency and visual similarity effects.
 
 ---
 
-## Stage 3. Measuring (\epsilon^*) with a Targeted Attack
+## Stage 3. Measuring $\epsilon^*$ with a Targeted Attack
 
 For each image, we ask:
 
@@ -89,22 +88,22 @@ For each image, we ask:
 
 We then perform a targeted PGD attack that attempts to change the model response from `No` to `Yes`.
 
-The quantity of interest is **not attack success itself, but the minimum perturbation (\epsilon^*) required to flip the response.**
+The quantity of interest is **not attack success itself, but the minimum perturbation $\epsilon^*$ required to flip the response.**
 
 Interpretation:
 
-* smaller (\epsilon^*)
+* smaller $\epsilon^*$
   → easier to induce hallucination
-* larger (\epsilon^*)
+* larger $\epsilon^*$
   → harder to induce hallucination
 
 Final attack configuration:
 
-* (L_\infty) PGD
+* $L_\infty$ PGD
 * 20 steps × 2 restarts
 * perturbations applied in the [0,1] pixel space before normalization
-* maximum (\epsilon = 32/255)
-* exponential search + binary search for (\epsilon^*)
+* maximum $\epsilon = 32/255$
+* exponential search + binary search for $\epsilon^*$
 
 From the matched pairs in Stage 2, 150 pairs are selected using stratified sampling, resulting in 300 total samples.
 
@@ -114,11 +113,11 @@ Three controls are used to verify that the experiment behaves as intended.
 
 1. **Questions about objects actually present in the image**
 
-   Yes rate at (\epsilon=0): 93–97%
+   Yes rate at $\epsilon = 0$: 93–97%
 
 2. **Targeted attack**
 
-   Attack success at (\epsilon=16/255): 100%
+   Attack success at $\epsilon = 16/255$: 100%
 
 3. **Random noise**
 
@@ -145,13 +144,13 @@ To preserve the matched-pair structure, we use stratified Cox regression with `p
 | Stratified Cox         | **HR = 1.627**, 95% CI [1.177, 2.250], p = 0.00325 |
 | Baseline hallucination | High 21.3% vs Low 6.0%                             |
 | Weibull AFT            | **Time ratio = 0.585**, p = 0.00031                |
-| Paired bootstrap       | median Δε* = −0.00038                              |
+| Paired bootstrap       | median $\Delta \epsilon^*$ = −0.00038              |
 | Log-rank               | p = 0.00026                                        |
 | McNemar                | p = 0.000117                                       |
 
 The main results remain significant after Holm correction.
 
-According to the Weibull AFT analysis, the required (\epsilon^*) is approximately **42% smaller under the high co-occurrence condition.**
+According to the Weibull AFT analysis, the required $\epsilon^*$ is approximately **42% smaller under the high co-occurrence condition.**
 
 This provides behavioral evidence that:
 
@@ -167,7 +166,7 @@ However, this alone does not show that the effect originates from the **visual e
 
 We therefore test whether high/low co-occurrence conditions can be distinguished using frozen CLIP visual features with a linear probe.
 
-A key issue is that the set of present objects (Y) already provides substantial information about whether a sample belongs to the high or low co-occurrence group.
+A key issue is that the set of present objects $Y$ already provides substantial information about whether a sample belongs to the high or low co-occurrence group.
 
 Therefore, instead of looking only at visual-feature AUC, we test whether visual features provide additional information beyond a **Y-only baseline**.
 
@@ -203,21 +202,21 @@ In contrast, Stage 5 does not show that the same information is linearly separab
 
 So far, the supported relationship is:
 
-[
+$$
 \text{High Co-occurrence}
 \rightarrow
-\text{smaller }\epsilon^*
+\text{smaller } \epsilon^*
 \rightarrow
 \text{easier hallucination}
-]
+$$
 
 while the following has **not** yet been established:
 
-[
+$$
 \text{Co-occurrence Bias}
 \rightarrow
 \text{Visual Encoder Representation}
-]
+$$
 
 ---
 

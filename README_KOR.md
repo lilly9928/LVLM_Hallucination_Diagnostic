@@ -4,11 +4,11 @@
 
 **이미지에 없는 객체가 주변 객체들과 자주 같이 등장하는 객체일수록 LVLM이 더 쉽게 hallucination하는가?**
 
-이를 확인하기 위해 이미지에 존재하지 않는 target object (A)에 대해 targeted adversarial attack을 수행하고, 모델의 응답을 `No → Yes`로 바꾸는 데 필요한 최소 perturbation budget (\epsilon^*)을 측정함.
+이를 확인하기 위해 이미지에 존재하지 않는 target object $A$에 대해 targeted adversarial attack을 수행하고, 모델의 응답을 `No → Yes`로 바꾸는 데 필요한 최소 perturbation budget $\epsilon^*$을 측정함.
 
 핵심 가설은 다음과 같음.
 
-> **Target object (A)가 이미지 내 객체들과 co-occurrence가 높을수록 더 작은 (\epsilon^*)에서 hallucination이 발생할 것이다.**
+> **Target object $A$가 이미지 내 객체들과 co-occurrence가 높을수록 더 작은 $\epsilon^*$에서 hallucination이 발생할 것이다.**
 
 전체 실험은 LLaVA-1.5-7B와 COCO 2017을 사용함.
 
@@ -18,7 +18,7 @@
 
 먼저 COCO train2017 전체에서 80개 object category 사이의 co-occurrence를 계산함.
 
-단순한 (P(B|A))는 `person`처럼 원래 자주 등장하는 객체의 빈도에 크게 영향을 받기 때문에, **PMI를 주요 co-occurrence score로 사용함.**
+단순한 $P(B|A)$는 `person`처럼 원래 자주 등장하는 객체의 빈도에 크게 영향을 받기 때문에, **PMI를 주요 co-occurrence score로 사용함.**
 
 * 데이터: COCO train2017 118,287장
 * 주요 지표: PMI
@@ -37,21 +37,21 @@
 
 ## Stage 2. High/Low co-occurrence 그룹 구성
 
-각 val2017 이미지에 대해 이미지에 **존재하지 않는 객체 (A)**를 target으로 설정하고,
+각 val2017 이미지에 대해 이미지에 **존재하지 않는 객체 $A$**를 target으로 설정하고,
 
-[
+$$
 S(A,Y)
 ======
 
 \mathrm{mean}
-{
+\left{
 PMI(A,y)
 :
-y\in Y
-}
-]
+y \in Y
+\right}
+$$
 
-로 target (A)와 이미지 내 실제 객체 집합 (Y) 사이의 co-occurrence score를 계산함.
+로 target $A$와 이미지 내 실제 객체 집합 $Y$ 사이의 co-occurrence score를 계산함.
 
 전체 candidate를 기준으로
 
@@ -77,13 +77,13 @@ Matching 전후 SMD는 다음과 같음.
 | avg. area          | −0.209 | −0.026 |
 | CLIP similarity    | +0.290 | +0.005 |
 
-총 **77,828개의 high/low pair**가 matching되었으며, 세 covariate 모두 matching 후 (|SMD|<0.04)를 만족함.
+총 **77,828개의 high/low pair**가 matching되었으며, 세 covariate 모두 matching 후 $|SMD| < 0.04$를 만족함.
 
 즉 이후 비교에서 단순한 object frequency나 visual similarity의 영향을 최대한 통제함.
 
 ---
 
-## Stage 3. Targeted attack으로 (\epsilon^*) 측정
+## Stage 3. Targeted attack으로 $\epsilon^*$ 측정
 
 각 이미지에 대해
 
@@ -91,24 +91,24 @@ Matching 전후 SMD는 다음과 같음.
 
 라고 질문하고, 원래 `No`라고 답하는 모델을 `Yes`라고 답하도록 만드는 targeted PGD attack을 수행함.
 
-여기서 관심 있는 값은 **attack 성공 여부 자체가 아니라, 응답을 바꾸는 데 필요한 최소 perturbation (\epsilon^*)**임.
+여기서 관심 있는 값은 **attack 성공 여부 자체가 아니라, 응답을 바꾸는 데 필요한 최소 perturbation $\epsilon^*$**임.
 
 즉,
 
-* (\epsilon^*)가 작다
+* $\epsilon^*$가 작다
   → 해당 객체를 hallucination시키기 쉬움
-* (\epsilon^*)가 크다
+* $\epsilon^*$가 크다
   → hallucination시키기 어려움
 
 으로 해석함.
 
 최종 설정:
 
-* L∞ PGD
+* $L_\infty$ PGD
 * 20 steps × 2 restarts
 * perturbation은 normalization 이전 [0,1] pixel space에서 적용
-* 최대 (\epsilon = 32/255)
-* exponential search + binary search로 (\epsilon^*) 탐색
+* 최대 $\epsilon = 32/255$
+* exponential search + binary search로 $\epsilon^*$ 탐색
 
 Stage 2의 matched pair 중 150쌍을 stratified sampling하여 총 300개 sample에 대해 실험함.
 
@@ -118,11 +118,11 @@ Stage 2의 matched pair 중 150쌍을 stratified sampling하여 총 300개 sampl
 
 1. **실제 존재하는 객체 질문**
 
-   ε=0에서 Yes rate = 93–97%
+   $\epsilon = 0$에서 Yes rate = 93–97%
 
 2. **Targeted attack**
 
-   ε=16/255에서 attack success = 100%
+   $\epsilon = 16/255$에서 attack success = 100%
 
 3. **Random noise**
 
@@ -151,13 +151,13 @@ Matched pair 구조를 유지하기 위해 `pair_id`를 strata로 하는 stratif
 | Stratified Cox         | **HR = 1.627**, 95% CI [1.177, 2.250], p = 0.00325 |
 | Baseline hallucination | High 21.3% vs Low 6.0%                             |
 | Weibull AFT            | **Time ratio = 0.585**, p = 0.00031                |
-| Paired bootstrap       | median Δε* = −0.00038                              |
+| Paired bootstrap       | median $\Delta \epsilon^*$ = −0.00038              |
 | Log-rank               | p = 0.00026                                        |
 | McNemar                | p = 0.000117                                       |
 
 Holm correction 이후에도 주요 결과가 모두 유의함.
 
-특히 Weibull AFT 기준으로는 **High co-occurrence 조건에서 필요한 (\epsilon^*)가 약 42% 작게 나타남.**
+특히 Weibull AFT 기준으로는 **High co-occurrence 조건에서 필요한 $\epsilon^*$가 약 42% 작게 나타남.**
 
 즉,
 
@@ -175,7 +175,7 @@ Stage 3–4는 **LLaVA 전체 모델의 행동**에서 co-occurrence effect가 �
 
 그래서 frozen CLIP visual feature만으로 high/low co-occurrence condition을 구분할 수 있는지 linear probe를 수행함.
 
-여기서 중요한 것은 이미지에 실제 존재하는 객체 집합 (Y)만 알아도 high/low condition을 상당 부분 예측할 수 있다는 점임.
+여기서 중요한 것은 이미지에 실제 존재하는 객체 집합 $Y$만 알아도 high/low condition을 상당 부분 예측할 수 있다는 점임.
 
 따라서 단순한 visual feature AUC가 아니라
 
@@ -217,21 +217,21 @@ Stage 3–4는 **LLaVA 전체 모델의 행동**에서 co-occurrence effect가 �
 
 따라서 현재까지 확인할 수 있는 것은
 
-[
+$$
 \text{High Co-occurrence}
 \rightarrow
-\text{smaller }\epsilon^*
+\text{smaller } \epsilon^*
 \rightarrow
 \text{easier hallucination}
-]
+$$
 
 이며,
 
-[
+$$
 \text{Co-occurrence Bias}
 \rightarrow
 \text{Visual Encoder Representation}
-]
+$$
 
 까지는 아직 확인되지 않음.
 
@@ -259,6 +259,7 @@ High co-occurrence condition에서 baseline hallucination도 더 많이 발생�
 * 현재 attack은 closed-form Yes/No 질문을 기준으로 설계되었기 때문에 open-ended caption hallucination에 동일하게 적용된다고 볼 수 없음.
 
 ---
+
 ## 파일 구조
 
 ```text
