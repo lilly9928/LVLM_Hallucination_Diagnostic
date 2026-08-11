@@ -1,0 +1,16 @@
+# Stage 8: survival analysis on Stage 7's (open-ended captioning) epsilon*
+# results. Same statistics as Stage 4 (survival_analysis.py is fully generic
+# over the pair_id/arm/status/epsilon_star schema) -- only the input path and
+# report labels differ.
+epsilon_star_results_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage7_caption_attack/epsilon_star_results.csv
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage8_survival_analysis_caption
+
+epsilon_max: 0.5019607843137255    # 128/255 -- must match Stage 7's config
+epsilon_floor: 0.00006127450980392157  # Stage 7's eps0 -- used only to shift duration=0 (already-mentioned) cases for the Weibull AFT fit, which cannot take T=0
+
+n_bootstrap: 10000
+seed: 42
+
+# Family-wise error rate across the two distinct hypotheses tested on this data
+# (epsilon* survival difference; already-mentioned baseline-rate difference).
+alpha: 0.05

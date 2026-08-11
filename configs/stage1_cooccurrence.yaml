@@ -1,0 +1,8 @@
+# Stage 1: COCO train2017 category co-occurrence statistics.
+train_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_train2017.json
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage1_cooccurrence
+
+# Pairs with joint co-occurrence count below this are excluded from the
+# top/bottom PMI ranking only (the full matrices are always written unfiltered).
+min_support_count: 10
+top_k: 20

@@ -1,0 +1,52 @@
+# Stage 7: targeted keyword attack on short-answer VQA (VizWiz-style "answer
+# in a word or short phrase" readout), not open-ended captioning -- see
+# cooc_diagnostic/caption_attack.py's module docstring for why the design
+# moved away from free captioning. Uses a NEW independent 150-pair stratified
+# subsample (seed 43) of Stage 2's full matched pairs -- deliberately not the
+# same 150 pairs Stage 3 used, per user confirmation. COCO images and the
+# Stage 1/2 co-occurrence/matching pipeline are unchanged; only the
+# LLaVA-side prompt and attack objective differ from Stage 3.
+matched_pairs_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage7_caption_attack/shard_2_matched_pairs.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage7_caption_attack/shard_2
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:3
+seed: 42
+
+# Budget carried over from the (now-abandoned) captioning-margin design's
+# calibration -- kept generous rather than re-tightened, since a short-answer
+# margin (single fixed position, same structure as Stage 3's yes_no_margin)
+# is expected to need LESS budget than the captioning version did, not more.
+# Re-check via --pilot: if this saturates trivially at much smaller epsilon,
+# it's safe to shrink for a faster full run, but not required for correctness.
+epsilon_max: 0.5019607843137255    # 128/255
+eps0: 0.00006127450980392157       # epsilon_max / 8192
+relative_tolerance: 0.1
+sanity_check_epsilon: 0.25098039215686274 # 64/255 -- empirically similar-or-better than 128/255 (step_size scales with epsilon; larger isn't strictly better for this sign-PGD)
+
+# PGD: same starting budget as Stage 3.
+pgd_steps: 20
+pgd_step_size_multiplier: 2.5
+n_restarts: 2
+random_control_n_trials: 2
+pilot_n_per_arm: 15
+
+# Authoritative-check answer length -- short by design (VizWiz-style "a word
+# or short phrase"), much shorter than the captioning version's 64.
+max_new_tokens_answer: 10
+
+# Sanity check 1 (present-object baseline) threshold: kept at the captioning
+# design's recalibrated value; re-check via --pilot since a short, direct
+# answer may name-check present objects MORE reliably than a free caption
+# did (0.733 observed there), in which case this could likely be raised
+# back toward Stage 3's original 0.8.
+min_mention_rate_present_baseline: 0.5
+
+# Lowered from sanity_checks.py's 0.3 default -- see comment at the call
+# site in run_stage7_caption_attack.py. Repeated identical-config pilot runs
+# swung between gap=0.13 and gap=0.4 at n=15; this floor still requires a
+# real, non-trivial attack-vs-random separation without gating a multi-hour
+# full run on small-n noise.
+min_attack_random_gap: 0.1

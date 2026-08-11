@@ -1,0 +1,23 @@
+# Stage 5: linear probe on frozen CLIP visual features (excess AUC over a
+# present-object-set-only baseline). Reuses Stage 2's candidate generation
+# (same eligible categories, same min_support, same tercile strata split) but
+# on the FULL unmatched candidate pool, not the smaller CEM-matched 150 pairs --
+# confirmed with the user for statistical power, since Stage 5 is explicitly an
+# independent complementary check, not a re-analysis of the same matched sample.
+train_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_train2017.json
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage5_linear_probe
+
+min_support_count: 10
+rare_category_freq_threshold_pct: 1.0
+stratum_lower_pct: 33.0
+stratum_upper_pct: 67.0
+
+clip_model_id: openai/clip-vit-large-patch14-336
+clip_device: cuda:2
+clip_batch_size: 64
+
+test_frac: 0.2   # image-level train/test split
+n_bootstrap: 2000
+seed: 42

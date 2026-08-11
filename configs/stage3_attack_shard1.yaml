@@ -1,0 +1,16 @@
+matched_pairs_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/shard_1/matched_pairs.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/shard_1
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:2
+seed: 42
+epsilon_max: 0.12549019607843137
+eps0: 1.53037348876953e-05
+relative_tolerance: 0.1
+sanity_check_epsilon: 0.06274509803921569
+pgd_steps: 20
+pgd_step_size_multiplier: 2.5
+n_restarts: 2
+random_control_n_trials: 2
+pilot_n_per_arm: 15

@@ -1,0 +1,28 @@
+# Stage 2: sampling and confound matching on COCO val2017.
+train_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_train2017.json
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage2_sampling_matching
+
+# Same principle as Stage 1: a present-object term only counts toward a
+# candidate's mean-PMI score if its training joint count reaches this.
+min_support_count: 10
+
+# Target categories with train2017 marginal frequency below this (%) are
+# excluded as candidate absent targets A (co-occurrence signal too unstable,
+# confirmed in Stage 1: hair drier, toaster, parking meter, scissors, bear, toothbrush).
+rare_category_freq_threshold_pct: 1.0
+
+# Bottom `stratum_lower_pct` of candidate scores -> control (low co-occurrence);
+# top (100 - stratum_upper_pct) -> treatment (high co-occurrence); the middle is dropped.
+stratum_lower_pct: 33.0
+stratum_upper_pct: 67.0
+
+# Coarsened exact matching bin counts.
+freq_bins: 4
+area_bins: 4
+clip_bins: 5
+
+clip_model_id: openai/clip-vit-large-patch14-336
+clip_device: cuda:1
+clip_batch_size: 64

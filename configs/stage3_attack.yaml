@@ -1,0 +1,47 @@
+# Stage 3: targeted PGD attack and epsilon* search.
+# Full Stage 2 output has 77,828 matched pairs -- far too many to run PGD+bisection
+# on with 1 GPU (~102s/sample measured). Using a 150-pair proportional stratified
+# subsample by CEM cell (scripts/subsample_matched_pairs.py) that preserves the
+# same covariate balance, confirmed with the user given the real per-sample cost.
+matched_pairs_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/matched_pairs_subsample_150.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42
+
+# L-inf attack budget search, in [0,1] pixel units (x255 for the 8-bit scale).
+# A 30-sample pilot with a fixed 1/255-resolution linear bisection found nearly
+# every sample flipping already at that coarsest grid point -- true thresholds
+# live far below 1/255, saturating a fixed grid. Search is now two-phase:
+# exponential bracketing from eps0, doubling up to epsilon_max, then bisection
+# within the found bracket to relative_tolerance -- this adapts to whatever
+# scale the true threshold lives at instead of assuming it in advance.
+epsilon_max: 0.12549019607843137   # 32/255 -- right-censoring boundary (safety net, unchanged)
+eps0: 0.0000153037348876953        # epsilon_max / 8192 -- ~1/255 / 256, well below the observed floor
+relative_tolerance: 0.1            # epsilon* accurate to within 10% (multiplicative) of the true threshold
+sanity_check_epsilon: 0.06274509803921569 # 16/255 -- generous budget for sanity checks 2 & 3
+
+# PGD: step_size = pgd_step_size_multiplier * epsilon / pgd_steps (Madry et al. convention).
+# A timing pilot found that failed (non-flipping) trials cannot early-stop and
+# so always burn the full steps*restarts budget, dominating total search cost;
+# at the original 40/3 this made epsilon* search (~10 calls/sample) take ~267s/
+# sample. Reduced to 20 steps / 2 restarts (~2.6x speedup, measured) after
+# confirming with the user this is an acceptable speed/rigor trade -- PGD-20 is
+# a commonly reported budget in the adversarial-robustness literature.
+pgd_steps: 20
+pgd_step_size_multiplier: 2.5
+
+# 1 zero-init + 1 random-init restart per epsilon trial (guards against an
+# unlucky/degenerate zero-init trajectory producing a false "did not flip").
+n_restarts: 2
+
+# Random-noise control uses the same trial budget as the attack for a fair comparison.
+random_control_n_trials: 2
+
+# Small pilot for the 3 mandatory sanity checks + wall-clock timing (used before
+# committing to the 150-pair full run above; --pilot mode subsamples this many
+# pairs from whatever matched_pairs_path currently points to).
+pilot_n_per_arm: 15

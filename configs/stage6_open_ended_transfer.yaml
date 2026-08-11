@@ -1,0 +1,21 @@
+# Stage 6 (add-on): does the SAME yes/no-optimized adversarial image also make
+# the category get mentioned in an open-ended caption? A lightweight transfer
+# check reusing Stage 3's already-found epsilon* per sample -- no new attack
+# objective, no new epsilon search.
+epsilon_star_results_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/epsilon_star_results.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage6_open_ended_transfer
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:2
+seed: 42
+
+# Same PGD recipe Stage 3 used (20 steps / 2 restarts) -- epsilon itself is
+# already known (Stage 3's epsilon_star), so this re-attack is a single call,
+# not a search.
+pgd_steps: 20
+pgd_step_size_multiplier: 2.5
+n_restarts: 2
+
+max_new_tokens_caption: 64

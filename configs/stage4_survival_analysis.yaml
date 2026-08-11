@@ -1,0 +1,13 @@
+# Stage 4: survival analysis on Stage 3's epsilon* results.
+epsilon_star_results_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/epsilon_star_results.csv
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage4_survival_analysis
+
+epsilon_max: 0.12549019607843137   # 32/255 -- must match Stage 3's config
+epsilon_floor: 0.0000153037348876953  # Stage 3's eps0 -- used only to shift duration=0 (already_yes) for the Weibull AFT fit, which cannot take T=0
+
+n_bootstrap: 10000
+seed: 42
+
+# Family-wise error rate across the two distinct hypotheses tested on this data
+# (epsilon* survival difference; already_yes baseline-rate difference).
+alpha: 0.05
