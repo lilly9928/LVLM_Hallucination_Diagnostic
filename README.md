@@ -1,4 +1,4 @@
-# Co-occurrence Bias → Hallucination 진단 실험 (go/no-go)
+# Co-occurrence Bias → Hallucination 진단 실험
 
 LVLM(LLaVA-1.5-7B)의 object hallucination이 visual encoder에 인코딩된
 object co-occurrence bias에서 비롯되는지를 검증하는 진단 실험이다. 논문
