@@ -1,4 +1,4 @@
-# Co-occurrence Bias → Hallucination Diagnostic Experiment
+# Hallucination Diagnostic Experiment (Co-occurrence Bias)
 
 ## Research Question
 
