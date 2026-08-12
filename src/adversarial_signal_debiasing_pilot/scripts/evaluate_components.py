@@ -281,21 +281,18 @@ def main() -> None:
 
     mean_row = next(r for r in selectivity_rows if r["candidate_type"] == "mean_direction")
     best_random = max((r for r in selectivity_rows if r["candidate_type"] == "random_direction"), key=lambda r: r["selectivity_min_over_lambda"])
-    best_pca = None
-    pca_rows = [r for r in selectivity_rows if r["candidate_type"] == "pca_component"]
-    if pca_rows:
-        best_pca = max(pca_rows, key=lambda r: r["selectivity_min_over_lambda"])
+    decomposed_rows = [r for r in selectivity_rows if r["candidate_type"] in ("pca_component", "pls_component")]
+    best_decomposed = max(decomposed_rows, key=lambda r: r["selectivity_min_over_lambda"]) if decomposed_rows else None
 
     print(f"\n[eval-components] mean_direction selectivity={mean_row['selectivity_min_over_lambda']:+.4f}")
     print(f"[eval-components] best random direction ({best_random['candidate_id']}) selectivity={best_random['selectivity_min_over_lambda']:+.4f}")
-    if best_pca:
-        beats_mean = best_pca["selectivity_min_over_lambda"] > mean_row["selectivity_min_over_lambda"]
-        beats_random = best_pca["selectivity_min_over_lambda"] > best_random["selectivity_min_over_lambda"]
-        print(f"[eval-components] best PCA component ({best_pca['candidate_id']}) selectivity={best_pca['selectivity_min_over_lambda']:+.4f} "
-              f"beats_mean={beats_mean} beats_best_random={beats_random}")
+    if best_decomposed:
+        beats_mean = best_decomposed["selectivity_min_over_lambda"] > mean_row["selectivity_min_over_lambda"]
+        beats_random = best_decomposed["selectivity_min_over_lambda"] > best_random["selectivity_min_over_lambda"]
+        print(f"[eval-components] best decomposed component ({best_decomposed['candidate_type']}:{best_decomposed['candidate_id']}) "
+              f"selectivity={best_decomposed['selectivity_min_over_lambda']:+.4f} beats_mean={beats_mean} beats_best_random={beats_random}")
         if not (beats_mean and beats_random):
-            print("[eval-components] NOTE: best PCA component does NOT clearly beat both baselines -- "
-                  "consider running PLS (decompose_signal.py --with-pls) per Part VIII before finalizing selection.")
+            print("[eval-components] NOTE: best decomposed component does NOT clearly beat both baselines.")
 
 
 if __name__ == "__main__":

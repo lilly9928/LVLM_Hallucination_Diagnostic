@@ -1,269 +1,152 @@
-# Hallucination Diagnostic Experiment (Co-occurrence Bias)
+# Co-occurrence Hallucination Diagnostic
 
-## Research Question
+## Research Hypothesis
 
-**Are LVLMs more likely to hallucinate an absent object when that object frequently co-occurs with the objects present in the image?**
+This project tests whether LVLMs are more likely to hallucinate an absent object when that object frequently co-occurs with the objects present in the image.
 
-To test this, we perform a targeted adversarial attack on a target object $A$ that is not present in the image, and measure the minimum perturbation budget $\epsilon^*$ required to flip the model response from `No → Yes`.
+> **If a target object $A$ (absent from the image) has higher co-occurrence with the objects present in the image, hallucination occurs more easily.**
 
-The main hypothesis is:
+All experiments use LLaVA-1.5-7B and COCO 2017 (train2017 for co-occurrence statistics, val2017 for all model-facing evaluation), seed=42 throughout.
 
-> **If the target object $A$ has higher co-occurrence with the objects present in the image, hallucination will occur at a smaller $\epsilon^*$.**
+The project is organized as four phases, each building on the previous phase's result rather than restating it. Detailed numbers for any given stage live with that stage's own outputs/README (linked below); this file only tracks what exists, what it found at a headline level, and how it connects to the next phase.
 
-All experiments use LLaVA-1.5-7B and COCO 2017.
-
----
-
-## Stage 1. Object Co-occurrence Estimation
-
-We first compute object co-occurrence statistics across all 80 COCO object categories using COCO train2017.
-
-Since a simple conditional probability $P(B|A)$ is strongly affected by the marginal frequency of common categories such as `person`, **PMI is used as the main co-occurrence score.**
-
-* Dataset: COCO train2017, 118,287 images
-* Main metric: PMI
-* Pairs with support count < 10 are excluded from subsequent analysis
-* 1,407 out of 3,160 total pairs are excluded
-
-Semantically meaningful object pairs show high PMI values.
-
-* `mouse–keyboard`: PMI = 3.65, lift = 38.3×
-* `car–sink`: PMI = −3.79
-* `person` marginal frequency = 54.2%
-
-This confirms that COCO contains a clear object co-occurrence structure.
+```
+Phase A  Behavioral effect (does it happen?)         Stage 1-8
+Phase B  Representational locus (where does it live?) Stage 9-11 (+ Stage 5)
+Phase C  Single-pair mechanistic case study            Stage 11 case study + cooccurrence_causal_coupling
+Phase D  Debiasing feasibility (can it be removed?)     adversarial_functional_debiasing_pilot + adversarial_signal_debiasing_pilot
+```
 
 ---
 
-## Stage 2. High/Low Co-occurrence Group Construction
+## Phase A — Behavioral Effect (Stage 1-8)
 
-For each val2017 image, we define a target object $A$ that is **not present in the image**.
+Population-level pipeline across many object-category pairs. No separate README per stage; this is the primary write-up for these results.
 
-The co-occurrence score between the target $A$ and the set of objects present in the image $Y$ is defined as:
+| Stage | What it tests | Method | Headline result |
+|---|---|---|---|
+| **1** | Existence of real object co-occurrence structure in COCO | PMI over train2017 (118,287 images), pairs with support < 10 excluded | `mouse–keyboard` PMI = 3.65 (lift 38.3×); structure confirmed |
+| **2** | Isolation of the co-occurrence effect from confounds | High/Low co-occurrence groups (top/bottom 33% of mean PMI to present objects), Coarsened Exact Matching on marginal frequency / object area / CLIP similarity | 77,828 matched pairs, all covariates \|SMD\| < 0.04 after matching |
+| **3** | Difficulty of *inducing* hallucination via attack | Targeted PGD attack on `Is there a {A}?`, minimum flip budget $\epsilon^*$ ($L_\infty$, 20 steps × 2 restarts, max $\epsilon=32/255$), 150 matched pairs (300 samples) | 3 mandatory sanity checks pass (attack ≫ random-noise flip rate) |
+| **4** | Whether High co-occurrence needs a smaller $\epsilon^*$ than Low | Stratified Cox / Weibull AFT / paired bootstrap / McNemar on Stage 3's $\epsilon^*$, `pair_id` as stratum | Cox HR = 1.627 (p = 0.00325); ε\* ≈42% smaller under High; survives Holm correction |
+| **5** | Linear decodability of the bias from the frozen visual encoder | Linear probe on CLIP visual features vs. a Y-only (present-objects) baseline, excess AUC | excess AUC = −0.023, 95% CI [−0.025, −0.020] — no additional information |
+| **6** | Transfer of the yes/no-optimized attack to open-ended captioning | Reuse Stage 3's adversarial images, check target-mention rate in a free-form caption | Exploratory only — not yet controlled to this project's rigor bar; see `outputs/.../stage6_open_ended_transfer/`, not written up here |
+| **7** | Reproduction of the Stage 3 effect with a *caption-targeted* attack | Structural clone of Stage 3, readout = target-category mention in a short-answer response instead of forced yes/no | Pipeline built and runs end-to-end; went through several margin-design pivots and observed run-to-run noise at small N — not yet a controlled result |
+| **8** | Whether High vs. Low holds for the caption-attack $\epsilon^*$ | Same survival analysis as Stage 4, applied to Stage 7's $\epsilon^*$ | Same caveat as Stage 7 — the run completed but was judged not properly controlled; not reported as a finding here (see `outputs/.../stage8_survival_analysis_caption/` for the raw numbers) |
 
-$$
-S(A,Y)
-======
-
-\mathrm{mean}\left{
-PMI(A,y)
-:
-y \in Y
-\right}
-$$
-
-Candidates are divided into:
-
-* Top 33% → **High co-occurrence**
-* Bottom 33% → **Low co-occurrence**
-* Middle 33% → excluded
-
-A direct comparison between the high and low groups may be confounded by object frequency, object size, or semantic similarity between the image and the target object. Therefore, we apply **Coarsened Exact Matching (CEM)**.
-
-Matching variables:
-
-* target marginal frequency
-* average object area
-* CLIP image–text similarity
-
-The standardized mean difference (SMD) before and after matching is shown below.
-
-| Covariate          | Before |  After |
-| ------------------ | -----: | -----: |
-| marginal frequency | +0.076 | −0.036 |
-| avg. area          | −0.209 | −0.026 |
-| CLIP similarity    | +0.290 | +0.005 |
-
-A total of **77,828 high/low pairs** are successfully matched, and all three covariates satisfy $|SMD| < 0.04$ after matching.
-
-This allows the subsequent comparison to control for simple frequency and visual similarity effects.
+**Phase A summary:** the co-occurrence → hallucination effect is real and well-controlled for forced yes/no VQA (Stages 3-4), and does not reduce to visual-encoder-only information (Stage 5). Stages 6-8 explore whether the same effect holds for open-ended/caption-style readouts; those runs completed but are not reported as findings here — they went through enough mid-flight design pivots and small-N noise that they don't meet this project's bar for a controlled result (raw outputs are kept for reference, a rerun would be needed before writing up a conclusion).
 
 ---
 
-## Stage 3. Measuring $\epsilon^*$ with a Targeted Attack
+## Phase B — Representational Locus (Stage 9-11, general population)
 
-For each image, we ask:
+Moves from *behavior under attack* to *clean-image (ε=0) internal evidence*, locating where the bias actually lives rather than just whether it changes an attack budget.
 
-> `Is there a {A} in the image?`
+| Stage | What it tests (paper label) | Method | Headline result |
+|---|---|---|---|
+| **9** (Exp1) | Whether High co-occurrence already raises clean target-positive evidence $s_T$ = logit(Yes) − logit(No), before any attack | Same 150 matched High/Low pairs as Stage 3, $s_T$ at $\epsilon=0$ | mean diff = +0.729, 95% CI [0.399, 1.061], Cohen's $d_z$ = 0.353, p < 0.001 |
+| **10** (Exp2) | Whether, holding the image fixed, a *stronger* co-occurrence relationship to that specific image raises $s_T$ (within-image specificity, not just a between-image confound) | 50 images × 74 target categories (3,039 pairs), two-way fixed-effects model $s_T \sim \text{cooc\_score} + \text{image\_FE} + \text{target\_FE}$ | $\beta = 0.406$, 95% CI [0.290, 0.522], p = 6.6e-12, permutation null ≈ 0 |
+| **11** (Exp3) | Localization of the layer at which this effect emerges | Logit lens (final RMSNorm + lm_head) applied to Stage 10's 3,039 pairs at every one of the 32 LLaVA decoder layers, refitting Stage 10's exact FE model per layer | Signal is ≈0 for layers 1-6, significantly negative for layers 7-12, sign-flips positive at layer 13, and plateaus at partial $r \approx 0.21$–$0.26$ from layer 16 through the final layer (32, which exactly reproduces Stage 10's $\beta$) |
 
-We then perform a targeted PGD attack that attempts to change the model response from `No` to `Yes`.
-
-The quantity of interest is **not attack success itself, but the minimum perturbation $\epsilon^*$ required to flip the response.**
-
-Interpretation:
-
-* smaller $\epsilon^*$
-  → easier to induce hallucination
-* larger $\epsilon^*$
-  → harder to induce hallucination
-
-Final attack configuration:
-
-* $L_\infty$ PGD
-* 20 steps × 2 restarts
-* perturbations applied in the [0,1] pixel space before normalization
-* maximum $\epsilon = 32/255$
-* exponential search + binary search for $\epsilon^*$
-
-From the matched pairs in Stage 2, 150 pairs are selected using stratified sampling, resulting in 300 total samples.
-
-### Sanity Checks
-
-Three controls are used to verify that the experiment behaves as intended.
-
-1. **Questions about objects actually present in the image**
-
-   Yes rate at $\epsilon = 0$: 93–97%
-
-2. **Targeted attack**
-
-   Attack success at $\epsilon = 16/255$: 100%
-
-3. **Random noise**
-
-   Flip rate under random noise with the same budget: 7–24%
-
-The targeted attack exceeds random-noise flipping by **76–87 percentage points**.
-
-This indicates that the response changes are caused by targeted perturbations rather than general sensitivity to image noise.
+**Phase B summary:** the effect is (a) already present with no attack at all, (b) specific to the image-target relationship and not a generic frequency confound, and (c) linearly decodable from the LLM's own decoder stream from the mid layers onward — in contrast to Stage 5's negative result for the frozen visual encoder. This localizes the effect to LLM decoder layers ≥13 and leads into Phase C's test of whether that representation is *causally used*.
 
 ---
 
-## Stage 4. High vs. Low Co-occurrence Comparison
+## Phase C — Single-Pair Mechanistic Case Study
 
-The main question is:
+Everything above pools many object-category pairs. Phase C runs the same chain of tests end-to-end for **one concrete, visually inspectable pair** (`baseball bat` context → `sports ball` target), so every step can be sanity-checked by eye, then pushes past correlation into intervention.
 
-> **Does hallucination occur with a smaller perturbation under the high co-occurrence condition?**
+### Stage 11 case study — `baseball bat → sports ball`
 
-To preserve the matched-pair structure, we use stratified Cox regression with `pair_id` as the stratum.
+Own full write-up: [`outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball/README.md`](../../../outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball/README.md) (Exp0-Exp7). Summary:
 
-### Results
+| Exp | What it tests | Result |
+|---|---|---|
+| 0 | Pair strength check | PMI = 2.342, lift = 10.40, ranked 59th/5,338 pairs — **GO** |
+| 1 | Whether bat context increases attack vulnerability | Median $\epsilon^*$ 0.0001148 (G10, bat+ball−) vs 0.0005203 (G00 control), Cox HR = 1.760, p = 0.024 |
+| 2 | Whether clean $s_\text{ball}$ is already higher with bat present | Cohen's $d$ = 0.745 |
+| 3 | Consistency between clean evidence and $\epsilon^*$ | Consistent (definitionally linked, reported as a consistency check, not independent evidence) |
+| 4/4B | Effect of removing the bat region (counterfactual) on ball evidence, vs. a sham edit | Bat removal reduces unsupported ball evidence more than sham; visually audited |
+| 5 | Layer localization of the bat→ball signal | Logit lens peaks at decoder layer 19 (Δ_bat_to_ball = 1.493 vs. Δ_sham = −0.030) |
+| 6 | Causal effect of editing layer 19 | Effect present, but **not selective** — reduces genuine ball evidence and bat recognition by an equal or larger amount |
+| 7 | Feasibility of a selective, fully decoupled edit (P1-P4) | **Not established** — gated on Exp6's non-selectivity; P4 (association-knowledge preservation) not even measured |
 
-| Analysis               | Result                                             |
-| ---------------------- | -------------------------------------------------- |
-| Stratified Cox         | **HR = 1.627**, 95% CI [1.177, 2.250], p = 0.00325 |
-| Baseline hallucination | High 21.3% vs Low 6.0%                             |
-| Weibull AFT            | **Time ratio = 0.585**, p = 0.00031                |
-| Paired bootstrap       | median $\Delta \epsilon^*$ = −0.00038              |
-| Log-rank               | p = 0.00026                                        |
-| McNemar                | p = 0.000117                                       |
+**Summary:** the single-direction, single-layer edit that most cleanly reduces the spurious effect also destroys genuine object recognition at the same layer. Localization (Phase B, Exp5 here) is confirmed; a selective causal fix at this resolution is not.
 
-The main results remain significant after Holm correction.
+### `src/cooccurrence_causal_coupling/` — generalizing the causal test to population scale
 
-According to the Weibull AFT analysis, the required $\epsilon^*$ is approximately **42% smaller under the high co-occurrence condition.**
+Own full write-up: [`src/cooccurrence_causal_coupling/README.md`](src/cooccurrence_causal_coupling/README.md). Re-runs the case study's causal test (Exp6 above) across the full 50-image / 3,039-pair population from Stage 10-11, using a fixed-effects-controlled direction estimate (not a naive diff-in-means) and a pre-registered λ-grid over 4 layers (3, 13, 16, 24), with train/val/test image-disjoint splits.
 
-This provides behavioral evidence that:
-
-> **An absent target object is easier to hallucinate when it strongly co-occurs with the objects present in the image.**
-
----
-
-## Stage 5. Is the Bias Directly Encoded in Visual Encoder Features?
-
-Stages 3–4 show that **the behavior of the full LLaVA model changes depending on co-occurrence.**
-
-However, this alone does not show that the effect originates from the **visual encoder itself**.
-
-We therefore test whether high/low co-occurrence conditions can be distinguished using frozen CLIP visual features with a linear probe.
-
-A key issue is that the set of present objects $Y$ already provides substantial information about whether a sample belongs to the high or low co-occurrence group.
-
-Therefore, instead of looking only at visual-feature AUC, we test whether visual features provide additional information beyond a **Y-only baseline**.
-
-### Results
-
-| Probe               |              AUC |
-| ------------------- | ---------------: |
-| Y-only baseline     |            0.799 |
-| CLIP visual feature |            0.776 |
-| **Excess AUC**      |       **−0.023** |
-| 95% CI              | [−0.025, −0.020] |
-
-The visual features do **not** provide additional predictive information beyond the Y-only baseline.
-
-Therefore, the current results do not support the claim that:
-
-> “Co-occurrence bias is directly encoded in the frozen CLIP visual encoder features.”
+- The FE-controlled direction has a real, dose-dependent causal effect on the downstream $\beta$: at layer 24, λ=1.0, $\beta$ drops 99% (0.306 → 0.004), monotonic in λ, and clearly beats random/shuffled-direction controls.
+- It is **still not selective**: the same intervention destroys genuine target-recognition evidence by an even larger margin at the same layer (−3.06 logits), and low-co-occurrence absent targets *rise* rather than staying flat.
+- **Conclusion:** causal load-bearing is confirmed at population scale, generalizing the single-pair case study's negative selectivity finding rather than overturning it.
 
 ---
 
-## Overall Results
+## Phase D — Debiasing Feasibility
 
-| Question                                                           | Result                      |
-| ------------------------------------------------------------------ | --------------------------- |
-| Does higher co-occurrence make hallucination easier to induce?     | **Yes**                     |
-| Is the difference explained by frequency / area / CLIP similarity? | Controlled through matching |
-| Does the same effect appear under random noise?                    | **No**                      |
-| Is the bias linearly readable from frozen CLIP features?           | **No**                      |
+Given that representation-editing is not selective (Phase C), Phase D asks whether **training** (rather than a runtime edit) can reduce the spurious pathway on the same fixed `baseball bat → sports ball` pair, while preserving genuine recognition.
 
-Stages 3–4 provide **behavioral evidence that hallucination susceptibility changes with object co-occurrence.**
+### `src/adversarial_functional_debiasing_pilot/`
 
-In contrast, Stage 5 does not show that the same information is linearly separable from frozen CLIP visual features.
+Own full write-up: [`src/adversarial_functional_debiasing_pilot/README.md`](src/adversarial_functional_debiasing_pilot/README.md). LoRA fine-tuning (`q_proj`/`v_proj` only) on two variants — Clean Debias (train on clean negatives) vs. Adv Debias (train on PGD-attacked negatives at ε=16/255) — evaluated on held-out clean images, image-ID-disjoint train/test.
 
-So far, the supported relationship is:
+- **GO**: bat→ball coupling $B$ drops from 1.937 (Original) → 0.320 (Clean Debias) → −0.182 (Adv Debias), with genuine ball/bat recognition staying within a pre-registered 10-pp non-selectivity threshold.
+- Caveat: the Adv-vs-Clean *ordering* (the pattern that would specifically motivate adversarial exposure) is not statistically significant at n=20 test images (paired 95% CI for Adv−Clean spans −0.631 to +0.439).
 
-$$
-\text{High Co-occurrence}
-\rightarrow
-\text{smaller } \epsilon^*
-\rightarrow
-\text{easier hallucination}
-$$
+### `src/adversarial_signal_debiasing_pilot/`
 
-while the following has **not** yet been established:
+Own full write-up: [`src/adversarial_signal_debiasing_pilot/README.md`](src/adversarial_signal_debiasing_pilot/README.md). Follow-up: decomposes the adversarially-induced layer-19 representation shift (PCA / PLS) to test whether a more *selective* spurious component exists, then trains a fourth variant, Adv+Decomp Debias, that suppresses only that component.
 
-$$
-\text{Co-occurrence Bias}
-\rightarrow
-\text{Visual Encoder Representation}
-$$
+- **NO-GO**: the best decomposed candidate (PLS2) beats a plain mean-direction baseline but does not clearly beat the best of 20 random directions on an internal selectivity test.
+- Corroborated by the downstream training result: Adv+Decomp Debias is not better than plain Adv Debias on coupling, and is worse than every other variant on genuine Ball+ retention.
+- Reinforces Phase C's finding from a different angle: the non-selectivity of the layer-19 shift is not an artifact of using a single diff-in-means direction — it survives both PCA (unsupervised) and PLS (supervised) decomposition.
 
 ---
 
-## Current Conclusion
+## Where Things Stand
 
-**Co-occurrence bias appears to affect hallucination behavior in LLaVA.**
+| What was tested | Phase | Result |
+|---|---|---|
+| Whether higher co-occurrence makes hallucination easier to induce (forced yes/no) | A | Confirmed |
+| Whether the same holds for open-ended captioning | A | Not yet established — pipeline exists (Stage 6-8), no controlled result written up |
+| Whether the bias is linearly readable from the frozen visual encoder | B | Not supported |
+| Whether the bias is linearly readable from the LLM decoder stream | B | Confirmed, from layer ≈13 onward |
+| Whether that representation is causally used by the final decision | C | Confirmed (single pair and, generalized, full population) |
+| Whether a selective (non-destructive) causal edit is currently achievable | C | Not achieved — best edits found are not selective |
+| Whether training instead of editing can reduce the effect while preserving recognition | D | Promising (GO) for adversarial LoRA fine-tuning; decomposition-guided selectivity (NO-GO) adds nothing on top |
 
-The high co-occurrence condition shows both a higher baseline hallucination rate and a smaller adversarial perturbation required to induce hallucination.
-
-However, the current experiments do not identify whether this effect originates from the **visual encoder, vision-language fusion, or language-model prior**.
-
-In particular, Stage 5 does not reveal additional co-occurrence information in frozen CLIP features.
-
-> **The next step is therefore to localize where co-occurrence information is actually represented within the model.**
-
----
-
-## Limitations
-
-* Stage 3 uses only 150 matched pairs out of the full 77,828 matched pairs.
-* PGD is run with 20 steps × 2 restarts due to computational cost.
-* Stage 5 only tests a linear probe, so nonlinear representations of co-occurrence information are not ruled out.
-* The current attack is designed for closed-form Yes/No questions and therefore does not directly establish transfer to open-ended caption hallucination.
+Everything here is single-model (LLaVA-1.5-7B), single-dataset (COCO 2017); see each stage's own README for its specific limitations.
 
 ---
 
 ## File Structure
 
 ```text
-configs/                                  stage-specific YAML configurations
-src/cooc_diagnostic/
-  coco_index.py                           COCO image-level present-category indexing
-  cooccurrence_stats.py                   PMI/lift/raw conditional computation
-  covariates.py                           category-level average object area
-  clip_similarity.py                      CLIP image-text similarity and image embeddings
-  strata_sampling.py                      candidate generation + high/low strata construction
-  matching.py                             Coarsened Exact Matching + balance table
-  stratified_subsample.py                 stratified subsampling preserving CEM cell ratios
-  llava_runtime.py                        LLaVA preprocessing/prompting/Yes-No decision
-  pgd_attack.py / random_attack.py        L∞ PGD attack and random-noise control
-  epsilon_star.py                         ε* exponential search + binary search
-  sanity_checks.py                        aggregation of three required sanity checks
-  survival_analysis.py                    KM, stratified Cox, Weibull AFT, McNemar, Holm
-  linear_probe.py                         Stage 5 linear probe (excess AUC)
-scripts/run_stage{1..5}_*.py              execution scripts for each stage
-tests/                                    CPU-only unit tests (53 tests, all passing)
-outputs/CooccurrenceHallucinationDiagnostic/stage{1..5}_*/   stage-wise outputs
+configs/                                   Stage 1-11 (general) YAML configs
+src/cooc_diagnostic/                       shared library for Stages 1-11 (general)
+  coco_index.py                            COCO image-level present-category indexing
+  cooccurrence_stats.py                    PMI/lift/raw conditional computation
+  covariates.py                            category-level average object area
+  clip_similarity.py                       CLIP image-text similarity and image embeddings
+  strata_sampling.py                       candidate generation + high/low strata construction
+  matching.py                              Coarsened Exact Matching + balance table
+  stratified_subsample.py                  stratified subsampling preserving CEM cell ratios
+  llava_runtime.py                         LLaVA preprocessing/prompting/Yes-No decision
+  pgd_attack.py / random_attack.py         L∞ PGD attack and random-noise control
+  epsilon_star.py                          ε* exponential search + binary search
+  sanity_checks.py                         aggregation of three required sanity checks
+  survival_analysis.py                     KM, stratified Cox, Weibull AFT, McNemar, Holm
+  linear_probe.py                          Stage 5 linear probe (excess AUC)
+  mention_detection.py / caption_attack.py Stage 6-8 open-ended/caption-mention readout + attack
+  masking.py                               counterfactual region removal (Stage 11 case study)
+scripts/run_stage{1..11}_*.py              execution scripts, one (or more, for Stage 11) per stage
+tests/                                      CPU-only unit tests (62 tests, all passing)
+outputs/CooccurrenceHallucinationDiagnostic/stage{1..11}_*/   stage-wise outputs (repo-root outputs/, not under this directory)
+
+src/cooccurrence_causal_coupling/          Phase C: population-scale causal intervention (own README)
+src/adversarial_functional_debiasing_pilot/  Phase D: LoRA debiasing pilot, Clean vs. Adv (own README)
+src/adversarial_signal_debiasing_pilot/      Phase D: signal decomposition + selective debiasing pilot (own README)
 ```
 
 ## Reproduction
@@ -271,32 +154,52 @@ outputs/CooccurrenceHallucinationDiagnostic/stage{1..5}_*/   stage-wise outputs
 ```bash
 cd src/experiments/CooccurrenceHallucinationDiagnostic
 export PYTHONPATH=src
+PY=/opt/anaconda3/envs/py3_11/bin/python
 
-# Unit tests (GPU not required; all 53 tests should pass)
-python -m unittest discover -s tests -v
+# Unit tests (GPU not required; all 62 tests should pass)
+$PY -m unittest discover -s tests -v
 
-# Stage 1
-python scripts/run_stage1_cooccurrence.py \
-  --config configs/stage1_cooccurrence.yaml
+# Phase A / B, Stage 1-11 (general population) -- run in order, each depends on prior stage's output
+$PY scripts/run_stage1_cooccurrence.py            --config configs/stage1_cooccurrence.yaml
+$PY scripts/run_stage2_sampling_matching.py       --config configs/stage2_sampling_matching.yaml        # GPU: CLIP
+$PY scripts/run_stage3_attack.py                  --config configs/stage3_attack.yaml --pilot           # GPU: LLaVA; run pilot first
+$PY scripts/run_stage3_attack.py                  --config configs/stage3_attack.yaml
+$PY scripts/run_stage4_survival_analysis.py       --config configs/stage4_survival_analysis.yaml
+$PY scripts/run_stage5_linear_probe.py            --config configs/stage5_linear_probe.yaml             # GPU: CLIP features
+$PY scripts/run_stage6_open_ended_transfer.py     --config configs/stage6_open_ended_transfer.yaml       # GPU: LLaVA
+$PY scripts/run_stage7_caption_attack.py          --config configs/stage7_caption_attack.yaml            # GPU: LLaVA
+$PY scripts/run_stage8_survival_analysis_caption.py --config configs/stage8_survival_analysis_caption.yaml
+$PY scripts/run_stage9_clean_target_evidence.py   --config configs/stage9_clean_target_evidence.yaml     # GPU: LLaVA
+$PY scripts/run_stage9_analysis.py                --config configs/stage9_analysis.yaml
+$PY scripts/run_stage10_within_image_evidence.py  --config configs/stage10_within_image_evidence.yaml    # GPU: LLaVA
+$PY scripts/run_stage10_analysis.py               --config configs/stage10_analysis.yaml
+$PY scripts/run_stage11_layer_localization.py     --config configs/stage11_layer_localization.yaml       # GPU: LLaVA
+$PY scripts/run_stage11_analysis.py               --config configs/stage11_analysis.yaml
 
-# Stage 2 (GPU required for CLIP similarity)
-python scripts/run_stage2_sampling_matching.py \
-  --config configs/stage2_sampling_matching.yaml
+# Phase C, Stage 11 case study (baseball bat -> sports ball), Exp0-Exp7
+$PY scripts/run_stage11_exp0_pair_statistics.py      --config configs/stage11_case_bat_ball.yaml
+$PY scripts/run_stage11_exp1_build_sample.py         --config configs/stage11_case_bat_ball.yaml
+$PY scripts/run_stage11_exp1_attack.py               --config configs/stage11_case_bat_ball.yaml         # GPU
+$PY scripts/run_stage11_exp2_clean_evidence.py       --config configs/stage11_case_bat_ball.yaml         # GPU
+$PY scripts/run_stage11_exp3_boundary_consistency.py --config configs/stage11_case_bat_ball.yaml
+$PY scripts/run_stage11_exp4_counterfactual.py       --config configs/stage11_case_bat_ball.yaml         # GPU
+$PY scripts/run_stage11_exp4b_visual_audit.py        --config configs/stage11_case_bat_ball.yaml
+$PY scripts/run_stage11_exp5_localization.py         --config configs/stage11_case_bat_ball.yaml         # GPU
+$PY scripts/run_stage11_exp6_causal_intervention.py  --config configs/stage11_case_bat_ball.yaml --layer 19 --device cuda:0  # GPU
+$PY scripts/run_stage11_exp7_decoupling.py           --config configs/stage11_case_bat_ball.yaml
+# full narrative: outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball/README.md
 
-# Stage 3 (GPU required for LLaVA-1.5-7B)
-# Run the pilot first to verify sanity checks and runtime
-python scripts/run_stage3_attack.py \
-  --config configs/stage3_attack.yaml \
-  --pilot
+# Phase C, population-scale causal coupling -- see src/cooccurrence_causal_coupling/README.md for details
+cd src/cooccurrence_causal_coupling/scripts
+$PY 01_collect_hidden_states.py   --config ../configs/01_collect_hidden_states.yaml   # GPU
+$PY 02_estimate_directions.py     --config ../configs/02_estimate_directions.yaml
+$PY 03_screen_layers.py           --config ../configs/03_screen_layers.yaml           # GPU
+$PY 04_full_intervention_scan.py  --config ../configs/04_full_intervention_scan.yaml   # GPU
+$PY 05_analyze_intervention.py    --config ../configs/05_analyze_intervention.yaml
 
-python scripts/run_stage3_attack.py \
-  --config configs/stage3_attack.yaml
-
-# Stage 4 (GPU not required)
-python scripts/run_stage4_survival_analysis.py \
-  --config configs/stage4_survival_analysis.yaml
-
-# Stage 5 (GPU required for CLIP feature extraction)
-python scripts/run_stage5_linear_probe.py \
-  --config configs/stage5_linear_probe.yaml
+# Phase D, debiasing pilots -- see each pilot's own README.md for full commands
+cd ../../adversarial_functional_debiasing_pilot
+# build_split.py -> generate_adversarial_forget_set.py -> train_lora_debias.py (x2 variants) -> evaluate_model.py -> analysis/
+cd ../adversarial_signal_debiasing_pilot
+# prepare_data.py -> extract_layer19_shifts.py -> decompose_signal.py -> evaluate_components.py -> train_adv_decomp_debias.py -> evaluate_all_models.py
 ```

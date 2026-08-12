@@ -16,12 +16,16 @@ lora:
 
 layer_idx: 19
 
-# Loss mode -- see task brief Part IX/X. "spur_only" is the preferred first
-# prototype (L_total = L_spur + lambda_T*L_target_retain + lambda_C*L_context_retain).
-# "spur_plus_adv_no" is the documented fallback (adds plain "No"-supervision CE
-# on the adversarial forget examples) used only if spur_only fails to produce a
-# usable model. Whichever is actually used is recorded in training_config.json.
-loss_mode: spur_only   # | spur_plus_adv_no
+# Loss mode -- see task brief Part IX/X. "spur_only" (the preferred first
+# prototype, L_total = L_spur + lambda_T*L_target_retain + lambda_C*L_context_retain)
+# was tried FIRST and FAILED: with no direct task supervision anchoring the
+# forget examples to "No", the model collapsed to always answering "Yes" on
+# every question (100% Yes-rate on G10/G00/GT/GC, see evaluation/adv_decomp_results.csv
+# from that run) -- exactly the failure mode the brief's fallback rule anticipates.
+# Switched to "spur_plus_adv_no" (adds plain "No"-supervision CE on the
+# adversarial forget examples), per the documented fallback. This choice is
+# recorded in training_config.json.
+loss_mode: spur_plus_adv_no   # spur_only tried first, failed (degenerate all-Yes collapse)
 lambda_spur: 1.0
 lambda_target_retain: 1.0
 lambda_context_retain: 1.0

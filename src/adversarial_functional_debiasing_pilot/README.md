@@ -146,9 +146,13 @@ did not degrade for either variant.
 
 ## Go / No-Go Decision
 
-**GO**: B_Adv (−0.182) < B_Clean (0.320) < B_Original (1.937), with Ball+/Bat+
-retention preserved (both within 10pp of Original; Bat+ actually improved for
-both variants).
+**GO**: B_Adv (−0.182) < B_Clean (0.320) < B_Original (1.937). Retention did
+**not** stay flat: Adv Debias's Ball+ accuracy actually *decreased* 4pp versus
+Original (0.880 → 0.840, i.e. 1 additional misclassified image out of 25), and
+Clean Debias's *increased* 4pp (0.880 → 0.920). Bat+ accuracy did not decrease
+for either variant (0.950 → 1.000 for both). "Retention preserved" below means
+these changes stay within the pre-registered 10-pp non-selectivity threshold —
+not that accuracy was literally unchanged.
 
 ## Interpretation
 
