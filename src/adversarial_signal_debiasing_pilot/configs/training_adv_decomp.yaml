@@ -1,0 +1,29 @@
+# Model C -- Adv + Decomp Debias. The only genuinely NEW LoRA training run in
+# this pilot. Same LoRA hyperparameters and same retain pools as Models A/B
+# (see training_clean.yaml / training_adv.yaml), so the only thing that can
+# explain a difference in outcome is the training objective below.
+variant: adv_decomp
+
+lora:
+  target_modules: ["q_proj", "v_proj"]
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  learning_rate: 0.0001
+  num_epochs: 3
+  batch_size: 1
+  gradient_accumulation_steps: 4
+
+layer_idx: 19
+
+# Loss mode -- see task brief Part IX/X. "spur_only" is the preferred first
+# prototype (L_total = L_spur + lambda_T*L_target_retain + lambda_C*L_context_retain).
+# "spur_plus_adv_no" is the documented fallback (adds plain "No"-supervision CE
+# on the adversarial forget examples) used only if spur_only fails to produce a
+# usable model. Whichever is actually used is recorded in training_config.json.
+loss_mode: spur_only   # | spur_plus_adv_no
+lambda_spur: 1.0
+lambda_target_retain: 1.0
+lambda_context_retain: 1.0
+
+component_source: /data3/KJE/code/UQ/outputs/adversarial_signal_debiasing_pilot/decomposition/component_selectivity.csv

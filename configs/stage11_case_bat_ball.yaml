@@ -1,0 +1,60 @@
+# Stage 11: end-to-end single-pair case study.
+# Context (trigger) = "baseball bat", Target = "sports ball".
+# Reuses Stage 1's PMI table, Stage 2/3/9/10's llava_runtime + pgd_attack +
+# epsilon_star machinery, and Stage 5's probe-fitting pattern, applied to one
+# fixed COCO category pair instead of a sampled cross-category population.
+
+train_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_train2017.json
+train_image_dir: /data3/KJE/code/UQ/data/COCO/images/train2017
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball
+
+context_category: "baseball bat"
+target_category: "sports ball"
+
+model_id: llava-hf/llava-1.5-7b-hf
+seed: 42
+
+# GPU 1 is occupied by another job at audit time (99% util) -- this case study
+# uses free GPUs instead of Stage 3/9/10's cuda:1 default.
+device: cuda:2
+device_shard_b: cuda:3
+clip_device: cuda:2
+
+# Exp1: PGD/epsilon* attack, identical definition to Stage 3 (unchanged attack
+# hyperparameters -- do not retune per-experiment).
+epsilon_max: 0.12549019607843137
+eps0: 0.0000153037348876953
+relative_tolerance: 0.1
+pgd_steps: 20
+pgd_step_size_multiplier: 2.5
+n_restarts: 2
+random_control_n_trials: 2
+sanity_check_epsilon: 0.06274509803921569
+
+# Exp1 G00 control sampling: G00 (bat-,ball-) has 4766 val2017 images -- far too
+# many to attack. G10 (bat+,ball-) has only 65 -- use all of them and draw an
+# equal-sized matched control sample from G00 via the same coarsened-exact-match
+# mechanism as Stage 2 (matching.py::coarsened_exact_match), repurposed here to
+# match on per-image (not per-category) covariates since target/context category
+# is fixed for every unit in this case study:
+#   "freq"     <- n_present (count of COCO categories present in the image,
+#                 excluding bat/ball themselves) -- scene-complexity confound.
+#   "area"     <- CLIP image-text similarity to "a photo of a sports ball"
+#                 -- controls for residual ball-like visual content in G00.
+#   "clip_sim" <- CLIP image-text similarity to "a photo of a baseball bat"
+#                 -- controls for residual bat-like visual content in G00.
+# This choice is fixed here, before running Exp1, per the no-post-hoc-matching rule.
+clip_model_id: openai/clip-vit-large-patch14-336
+freq_bins: 4
+area_bins: 4
+clip_bins: 5
+
+# Exp2 reference-group sizes (G01, G11 are descriptive references only, not
+# attacked in Exp1). G11 has only 32 val2017 images -- use all. G01 has 137 --
+# subsample to match G10/G00's size for a readable, balanced clean-evidence plot.
+g01_subsample_n: 65
+
+# Exp5: LLM logit-lens layers (all decoder layers reported; vision/projector
+# readout defined in exp5 script docstring, fixed before running).

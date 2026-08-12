@@ -1,0 +1,15 @@
+# Experiment 4, Step 1: collect decision-position hidden states at the 9
+# candidate layers, for the train+val image split only (direction estimation
+# + screening; test-split hidden states are consumed live during the patched
+# forward pass in later steps, not persisted here).
+evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence/within_image_evidence.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/patching
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42
+
+n_train_images: 30
+n_val_images: 10

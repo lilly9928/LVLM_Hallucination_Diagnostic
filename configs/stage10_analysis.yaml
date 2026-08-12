@@ -1,0 +1,12 @@
+# Stage 10 analysis: within-image relationship, two-way fixed-effect model,
+# and permutation-shuffle negative control for the co-occurrence coefficient.
+evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence/within_image_evidence.csv
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence
+
+n_permutations: 2000
+seed: 42
+alpha: 0.05
+
+# Minimum absent targets a given image must have to contribute to the
+# within-image per-image correlation/slope distribution (Primary Analysis 1).
+min_targets_per_image: 5

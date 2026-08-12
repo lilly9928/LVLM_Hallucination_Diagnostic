@@ -1,0 +1,11 @@
+# Stage 9: clean-image (epsilon=0, no attack) target-positive evidence s_T for
+# the Experiment-1 functional-bias check. Reuses the exact same 150 matched
+# pairs / 300 samples as Stage 3 so results join 1:1 with epsilon_star_results.csv.
+matched_pairs_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/matched_pairs_subsample_150.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage9_clean_target_evidence
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42

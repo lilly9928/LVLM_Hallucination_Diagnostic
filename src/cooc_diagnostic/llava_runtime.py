@@ -174,6 +174,75 @@ def yes_no_margin(model, processor, decision_point: YesNoDecisionPoint, input_id
     return logits[decision_point.yes_token_id] - logits[decision_point.no_token_id]
 
 
+def yes_no_logits(model, processor, decision_point: YesNoDecisionPoint, input_ids: torch.Tensor, image01: torch.Tensor) -> tuple[float, float]:
+    """Non-differentiable clean-image readout of (logit(yes), logit(no)) at the
+    decision position -- same teacher-forced position as `yes_no_margin`, but
+    returns both raw logits (not just their difference) so the margin s_T =
+    yes_logit - no_logit can be reconstructed and reported alongside its two
+    components, e.g. for Stage 9's clean (epsilon=0, no-attack) evidence readout.
+    """
+    with torch.no_grad():
+        if decision_point.prefix_ids:
+            prefix = torch.tensor([decision_point.prefix_ids], device=input_ids.device, dtype=input_ids.dtype)
+            full_ids = torch.cat([input_ids, prefix], dim=1)
+        else:
+            full_ids = input_ids
+        pixel_values = normalize(processor, image01).to(model.dtype)
+        outputs = model(input_ids=full_ids, pixel_values=pixel_values)
+        logits = outputs.logits[0, -1, :]
+        return float(logits[decision_point.yes_token_id]), float(logits[decision_point.no_token_id])
+
+
+def layerwise_logit_lens(model, processor, decision_point: YesNoDecisionPoint, input_ids: torch.Tensor, image01: torch.Tensor) -> dict[int, tuple[float, float]]:
+    """Logit lens (Nostalgebraist): apply the model's OWN final RMSNorm + lm_head
+    to every intermediate LLM decoder layer's hidden state at the decision
+    position, instead of only the true final layer -- unsupervised (no probe
+    fitting), and exact at the true final layer (layer index == number of LLM
+    decoder layers) since that reproduces the actual computation `yes_no_logits`
+    reads off. Only meaningful for LLM decoder layers: LLaVA's vision tower and
+    projector never see the text/target at all, so their hidden states carry no
+    target-specific signal to localize (same image -> identical vision/projector
+    hidden state regardless of which target is being asked about).
+
+    Returns {layer_index (0=embedding output, 1..N=after each decoder layer):
+    (yes_logit, no_logit)}.
+    """
+    with torch.no_grad():
+        if decision_point.prefix_ids:
+            prefix = torch.tensor([decision_point.prefix_ids], device=input_ids.device, dtype=input_ids.dtype)
+            full_ids = torch.cat([input_ids, prefix], dim=1)
+        else:
+            full_ids = input_ids
+        pixel_values = normalize(processor, image01).to(model.dtype)
+        outputs = model(input_ids=full_ids, pixel_values=pixel_values, output_hidden_states=True)
+
+        final_norm = model.model.language_model.norm
+        lm_head_weight = model.lm_head.weight
+        yes_vec = lm_head_weight[decision_point.yes_token_id]
+        no_vec = lm_head_weight[decision_point.no_token_id]
+
+        # HF's output_hidden_states convention (verified empirically against
+        # outputs.logits, not assumed): entries 0..N-1 are the RAW pre-final-norm
+        # residual stream (embedding output, then each decoder layer's output) --
+        # final_norm must be applied to these for a valid logit-lens readout.
+        # Entry N (the last one) is already post-final-norm (it IS what produced
+        # outputs.logits), so applying final_norm to it again would double-normalize
+        # and silently corrupt every "final layer" reading -- caught by Stage 11's
+        # own validation check (logit-lens layer N must reproduce Stage 10's real s_T).
+        n_entries = len(outputs.hidden_states)
+        results: dict[int, tuple[float, float]] = {}
+        for layer_idx, h in enumerate(outputs.hidden_states):
+            last_token_hidden = h[0, -1, :]
+            if layer_idx == n_entries - 1:
+                readout = last_token_hidden
+            else:
+                readout = final_norm(last_token_hidden.unsqueeze(0)).squeeze(0)
+            yes_logit = float(torch.dot(readout.to(yes_vec.dtype), yes_vec))
+            no_logit = float(torch.dot(readout.to(no_vec.dtype), no_vec))
+            results[layer_idx] = (yes_logit, no_logit)
+        return results
+
+
 def generate_greedy_answer(model, processor, input_ids: torch.Tensor, image01: torch.Tensor, max_new_tokens: int = 5) -> str:
     """Authoritative flip check: real greedy decoding (never sampling), decoded text.
 

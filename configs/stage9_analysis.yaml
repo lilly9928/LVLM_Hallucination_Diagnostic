@@ -1,0 +1,9 @@
+# Stage 9 analysis: High vs Low clean target-positive evidence (s_T), its
+# relationship to the continuous co-occurrence score, and to Stage 3's epsilon*.
+clean_evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage9_clean_target_evidence/clean_evidence.csv
+epsilon_star_results_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage3_attack/epsilon_star_results.csv
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage9_clean_target_evidence
+
+n_bootstrap: 10000
+seed: 42
+alpha: 0.05

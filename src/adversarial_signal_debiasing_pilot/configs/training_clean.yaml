@@ -1,0 +1,17 @@
+# Model A -- Clean Debias. REUSED VERBATIM from
+# adversarial_functional_debiasing_pilot/checkpoints/clean_debias (identical
+# forget/retain pools, identical LoRA hyperparameters, identical seed). Not
+# retrained -- see audit/repository_audit.md item 7 and README "What We Reused".
+# This file documents the reused configuration for provenance only.
+variant: clean
+reused_from: /data3/KJE/code/UQ/outputs/adversarial_functional_debiasing_pilot/checkpoints/clean_debias
+lora:
+  target_modules: ["q_proj", "v_proj"]
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  learning_rate: 0.0001
+  num_epochs: 3
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  mixture_ratio: [1, 1, 1]

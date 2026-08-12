@@ -1,0 +1,14 @@
+# Stage 11 analysis: beta_l (within-image co-occurrence effect on the
+# logit-lens readout) at every LLM decoder layer, with a permutation-shuffle
+# null computed once and reused across all layers (same image+target fixed
+# effects and same cooc_score permutations at every layer).
+layerwise_evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_layer_localization/layerwise_evidence.csv
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_layer_localization
+
+n_permutations: 2000
+seed: 42
+alpha: 0.05
+
+# Representative layers for the small-multiples scatter figure (0=embedding
+# output, 32=true final layer for this 32-decoder-layer LLM backbone).
+example_layers: [1, 16, 32]

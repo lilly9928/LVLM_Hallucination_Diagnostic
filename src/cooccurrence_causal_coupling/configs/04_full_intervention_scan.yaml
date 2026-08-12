@@ -1,0 +1,25 @@
+# Experiment 4, Step 4 (Stage 2 of the staged compute plan): full lambda grid
+# for the REAL direction, plus random/shuffled controls at a single lambda,
+# on the TEST split only (never tuned). Layer set reduced from the 9
+# candidates to 4 representative points per user sign-off after screening
+# showed 7/9 layers passing (Case-C-like distributed signal): L3 (null
+# reference), L13 (sign-transition), L16 (early plateau), L24 (late plateau).
+evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence/within_image_evidence.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+directions_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/patching/directions.npz
+output_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/patching
+controls_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/controls
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42
+n_train_images: 30
+n_val_images: 10
+
+layers: [3, 13, 16, 24]
+lambdas_real: [0.25, 0.5, 0.75, 1.0]
+lambda_control: 1.0
+n_random_directions: 5
+
+n_stability_images: 10

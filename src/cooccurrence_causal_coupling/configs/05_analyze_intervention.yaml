@@ -1,0 +1,14 @@
+main_results_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/patching/layerwise_intervention_results.csv
+genuine_target_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/controls/genuine_target_results.csv
+random_direction_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/controls/random_direction_results.csv
+shuffled_direction_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/controls/shuffled_direction_results.csv
+stability_path: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/controls/general_stability_results.csv
+stage11_report_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_layer_localization/stage11_report.json
+output_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/patching
+figures_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/figures
+robustness_dir: /data3/KJE/code/UQ/outputs/cooccurrence_causal_coupling/robustness
+
+n_bootstrap: 10000
+seed: 42
+alpha: 0.05
+lambda_control: 1.0

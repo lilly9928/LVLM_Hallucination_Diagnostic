@@ -1,0 +1,29 @@
+# Adversarial Signal Decomposition + Selective Debiasing Pilot -- fixed pair:
+# context="baseball bat", target="sports ball". Reuses the prior
+# adversarial_functional_debiasing_pilot's dataset (same seed=42 split,
+# same 45-image adversarial forget set) verbatim -- see audit/repository_audit.md.
+
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+group_membership_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball/exp0_group_membership.csv
+
+model_id: llava-hf/llava-1.5-7b-hf
+seed: 42
+
+context_category: "baseball bat"
+target_category: "sports ball"
+
+output_dir: /data3/KJE/code/UQ/outputs/adversarial_signal_debiasing_pilot
+
+# Source of the reused Parts I-II artifacts (dataset split, adversarial forget
+# set, adversarial images, and the Original/Clean/Adv Debias checkpoints +
+# clean-test evaluation results already computed there).
+prior_pilot_dir: /data3/KJE/code/UQ/outputs/adversarial_functional_debiasing_pilot
+
+# Dev/val split (within TRAIN images only) used for component selection
+# (Part VII): decomposition fit on dev, selectivity ranking on val. Applied
+# independently within each TRAIN role (G10_forget, GT_target_retain);
+# GC_context_retain mirrors G10_forget's split (same images, second question).
+dev_val_split:
+  dev_fraction: 0.7
+  seed: 42

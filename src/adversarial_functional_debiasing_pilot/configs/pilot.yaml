@@ -1,0 +1,51 @@
+# Adversarial Functional Debiasing Pilot -- fixed pair: context="baseball bat", target="sports ball".
+# Reuses Stage 11's group membership (exp0_group_membership.csv) instead of re-deriving it,
+# and reuses Stage 3/11's unchanged PGD/epsilon* attack hyperparameters (not retuned here).
+
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+group_membership_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_case_bat_ball/exp0_group_membership.csv
+
+model_id: llava-hf/llava-1.5-7b-hf
+seed: 42
+
+context_category: "baseball bat"
+target_category: "sports ball"
+
+output_dir: /data3/KJE/code/UQ/outputs/adversarial_functional_debiasing_pilot
+
+# --- Split sizes (deterministic seed=42 shuffle within each of the 4 disjoint
+# COCO groups G00/G10/G01/G11, then sliced -- see scripts/build_split.py) ---
+split:
+  g10_train_n: 45   # of 65 total G10 (bat+, ball-) -- forget/debias group
+  g10_test_n: 20     # remaining 20 of 65
+  g11_train_n: 22   # of 32 total G11 (bat+, ball+) -- feeds GT (ball retention) only
+  g11_test_n: 10
+  g01_sample_n: 38  # subsample of 137 G01 (bat-, ball+) before splitting
+  g01_train_n: 23
+  g01_test_n: 15
+  g00_test_n: 25    # of 4766 G00 (bat-, ball-) -- test-only, functional-coupling denominator
+
+# --- Attack: fixed epsilon chosen BEFORE inspecting any debiasing result, reusing
+# Stage 3's own "sanity_check_epsilon" (16/255) -- already documented in this repo
+# as a generous budget for a meaningful, reliably-flipping shift, and ~550x the
+# measured median epsilon* for this exact G10 pool (0.0001148, see Stage 11 Exp1). ---
+attack:
+  epsilon: 0.06274509803921569   # 16/255
+  pgd_steps: 20
+  pgd_step_size_multiplier: 2.5
+  n_restarts: 2
+
+# --- LoRA (see audit repository_audit.md section 5 for rationale) ---
+lora:
+  target_modules: ["q_proj", "v_proj"]
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  learning_rate: 0.0001
+  num_epochs: 3
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  # 1 forget : 1 retain-target : 1 retain-context per optimizer step, fixed
+  # before seeing any test result (per pilot instructions -- do not tune ratio post hoc).
+  mixture_ratio: [1, 1, 1]

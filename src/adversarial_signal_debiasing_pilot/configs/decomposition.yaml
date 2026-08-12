@@ -1,0 +1,20 @@
+# Part III-VIII: Layer-19 signal decomposition and component selectivity test.
+layer_idx: 19          # hidden_states index; module = model.language_model.layers[layer_idx - 1]
+
+pca:
+  k: 10                # requested components; reduced to rank(D) if smaller
+
+intervention:
+  lambda_values: [0.5, 1.0]   # fixed, not tuned per component
+  n_random_directions: 20     # norm-matched random baselines
+
+pls:
+  n_components: 3
+  # Only run if PCA components show poor selectivity relative to mean/random
+  # baselines on the internal VAL split (Part VIII rule) -- decided after
+  # inspecting evaluate_components.py's VAL output, not tuned against test.
+
+selection:
+  # Selectivity_k = |Delta_spurious| - |Delta_target| - |Delta_context|, computed
+  # on the internal VAL split only (never on the final CLEAN TEST split).
+  metric: "selectivity"

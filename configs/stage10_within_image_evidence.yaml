@@ -1,0 +1,31 @@
+# Stage 10 (Experiment 2): within-image co-occurrence specificity.
+# For a fixed image, does an absent target with a stronger co-occurrence
+# relationship to that image's present objects get higher clean s_T?
+#
+# Reuses Stage 1/2's exact co-occurrence definitions (compute_cooccurrence_stats,
+# build_candidates) and Stage 9's exact LLaVA runtime (llava_runtime.py) -- only
+# the image-sampling design is new (many absent targets per fixed image, instead
+# of one high/low matched target per image).
+train_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_train2017.json
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence
+
+# Identical to Stage 2 (configs/stage2_sampling_matching.yaml) -- do not redefine
+# the co-occurrence score or eligibility criteria for this experiment.
+min_support_count: 10
+rare_category_freq_threshold_pct: 1.0
+
+# Number of val2017 images to sample (random, fixed seed, images with a
+# non-empty present-object set). Each sampled image is evaluated against ALL
+# its eligible absent-target categories (~60-70/74 typically) to maximize
+# within-image continuous score variation, per the experiment brief's
+# preference for continuous analysis over a binary high/low split.
+n_images: 50
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42
+
+# Small pilot for timing + sanity before committing to the full n_images run.
+pilot_n_images: 5

@@ -1,0 +1,20 @@
+# Stage 11 (Experiment 3): layer-wise localization of the within-image
+# co-occurrence-specificity effect (Experiment 2's beta), via logit lens across
+# all LLM decoder layers. Reuses the EXACT same 3039 (image, target) pairs as
+# Stage 10 -- only LLM layers are probed; the vision tower and multimodal
+# projector are architecturally blind to the target/text, so a within-image
+# beta_l there is structurally 0 by construction (see Stage 5's between-group
+# excess-AUC result instead, which is the correct test for those layers).
+evidence_path: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage10_within_image_evidence/within_image_evidence.csv
+val_annotation_path: /data3/KJE/code/UQ/data/COCO/annotations/idkannotations/instances_val2017.json
+val_image_dir: /data3/KJE/code/UQ/data/COCO/images/val2017
+output_dir: /data3/KJE/code/UQ/outputs/CooccurrenceHallucinationDiagnostic/stage11_layer_localization
+
+model_id: llava-hf/llava-1.5-7b-hf
+device: cuda:1
+seed: 42
+
+# Small pilot (first N rows of evidence_path) for timing + logit-lens
+# validation (final layer must reproduce Stage 10's recorded s_T closely)
+# before committing to the full 3039-row run.
+pilot_n_rows: 60
