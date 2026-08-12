@@ -45,7 +45,7 @@ Phase A가 *attack 하에서의 행동*을 다뤘다면, Phase B는 *clean image
 | Stage | 검증 내용(논문 표기) | 방법 | 핵심 결과 |
 |---|---|---|---|
 | **9** (Exp1) | Attack 없이도 High co-occurrence가 clean target-positive evidence $s_T$ = logit(Yes) − logit(No)를 높이는지 검증 | Stage 3와 동일한 150개 matched High/Low pair, $\epsilon=0$에서의 $s_T$ | mean diff = +0.729, 95% CI [0.399, 1.061], Cohen's $d_z$ = 0.353, p < 0.001 |
-| **10** (Exp2) | 이미지를 고정한 상태에서 co-occurrence 관계 강도와 $s_T$의 관계 검증(within-image specificity, 이미지 간 confound와 구분) | 50개 이미지 × 74개 target category(3,039 pair), 이원 fixed-effects 모델 $s_T \sim \text{cooc\_score} + \text{image\_FE} + \text{target\_FE}$ | $\beta = 0.406$, 95% CI [0.290, 0.522], p = 6.6e-12, permutation null ≈ 0 |
+| **10** (Exp2) | 이미지를 고정한 상태에서 co-occurrence 관계 강도와 $s_T$의 관계 검증(within-image specificity, 이미지 간 confound와 구분) | 50개 이미지 × 74개 target category(3,039 pair), 이원 fixed-effects 모델 $s_T \sim \text{coocScore} + \text{imageFE} + \text{targetFE}$ | $\beta = 0.406$, 95% CI [0.290, 0.522], p = 6.6e-12, permutation null ≈ 0 |
 | **11** (Exp3) | 효과가 LLM의 어느 layer에서 나타나는지 localization | Stage 10의 3,039 pair에 대해 LLaVA decoder 32개 layer 전체에 logit lens(최종 RMSNorm + lm_head) 적용, layer별로 Stage 10과 동일한 FE 모델 재적합 | Layer 1-6 신호 ≈0, layer 7-12 유의하게 음(negative), layer 13에서 양(positive)으로 전환, layer 16부터 마지막 layer(32, Stage 10의 $\beta$ 재현)까지 partial $r \approx 0.21$–$0.26$로 plateau |
 
 **Phase B 정리:** 이 효과는 (a) attack 없이도 이미 존재하고, (b) 단순 frequency confound가 아니라 image-target 관계에 특이적이며, (c) LLM 자체의 decoder stream에서는 mid layer 이후부터 linear하게 decode됨 — frozen visual encoder에 대한 Stage 5의 negative 결과와 대비됨. 이 결과는 효과를 LLM decoder layer ≥13에 localize하며, Phase C에서 다루는 causal 사용 여부 검증으로 이어짐.
